@@ -196,19 +196,8 @@ const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
       </Drawer>
       <Main open={open}>
-      <DrawerHeader />
-      <Box sx={{ 
-        paddingTop: `calc(${theme.mixins.toolbar.minHeight}px)`,
-        paddingLeft: '8px',
-        textAlign: 'left',
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        height: 'auto'
-      }}>
+        <DrawerHeader />
         {children}
-      </Box>
       </Main>
     </Box>
   );

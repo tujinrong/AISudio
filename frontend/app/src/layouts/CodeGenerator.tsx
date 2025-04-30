@@ -1,13 +1,13 @@
 // src/components/CodeGenerator.tsx
 import { get, post } from '../utils/http';
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   TextField,
   Button,
   Select,
   MenuItem,
   InputLabel,
-  TextareaAutosize,
   Grid,
   Paper,
   Typography,
@@ -16,6 +16,8 @@ import {
   SelectChangeEvent,
 } from '@mui/material';
 import CircularProgress from '@mui/material/CircularProgress';
+import { useLabelLookup } from '../utils/Utils';
+
 
 interface ProgrammingLanguage {
   id: number;
@@ -52,11 +54,11 @@ interface FrontendLibrary {
 interface CodeGenerationRequest {
   prompt_text: string;
   uploaded_file_content: string | null;
-  programming_language_id: number;
-  framework_id: number;
-  database_type_id: number;
-  frontend_language_id: number;
-  frontend_library_id: number;
+  programming_language_id: string | null;
+  framework_id: string | null;
+  database_type_id: string | null;
+  frontend_language_id: string | null;
+  frontend_library_id: string | null;
 }
 
 const CodeGenerator: React.FC = () => {
@@ -73,9 +75,9 @@ const CodeGenerator: React.FC = () => {
   const [selectedDatabaseType, setSelectedDatabaseType] = useState<number | ''>('');
   const [selectedFrontendLanguage, setSelectedFrontendLanguage] = useState<number | ''>('');
   const [selectedFrontendLibrary, setSelectedFrontendLibrary] = useState<number | ''>('');
-  const [generatedCode, setGeneratedCode] = useState<string>('');
+  // const [generatedCode, setGeneratedCode] = useState<string>('');
   const [error, setError] = useState<string>('');
-
+  const { getLabel } = useLabelLookup();
   useEffect(() => {
     fetchMasterData();
   }, []);
@@ -83,16 +85,17 @@ const CodeGenerator: React.FC = () => {
   const fetchMasterData = async () => {
     try {
       const programmingLanguagesData = await get<ProgrammingLanguage[]>('/api/master/programming-languages')
-      console.log(programmingLanguagesData)
       setProgrammingLanguages(programmingLanguagesData);
+      setSelectedProgrammingLanguage(programmingLanguagesData.length > 0 ? programmingLanguagesData[0].id: -1);
       
       const databaseTypesData = await get<DatabaseType[]>('/api/master/database-types')
-      console.log(databaseTypesData)
       setDatabaseTypes(databaseTypesData);
+      setSelectedDatabaseType(databaseTypesData.length > 0 ? databaseTypesData[0].id: -1);
       
       const frontendLanguagesData = await get<FrontendLanguage[]>('/api/master/frontend-languages')
       console.log(frontendLanguagesData)
       setFrontendLanguages(frontendLanguagesData);
+      setSelectedFrontendLanguage(frontendLanguagesData.length > 0 ? frontendLanguagesData[0].id: -1);
       setError("");
 
     } catch (e: Error) {
@@ -148,44 +151,51 @@ const CodeGenerator: React.FC = () => {
       setUploadedFile(event.target.files[0]);
     }
   };
+  const navigate = useNavigate();
+
   const handleSubmit = async () => {
     setError('');
     setLoading(true);
     try {
         let uploadedFileContent: string | null = null;
+        const languageName = getLabel(Number(selectedProgrammingLanguage), programmingLanguages);
+        const selectedFrameworkName = getLabel(Number(selectedFramework), frameworks);
+        const selectedDatabaseTypeName = getLabel(Number(selectedDatabaseType), databaseTypes);
+        const selectedFrontendLanguageName = getLabel(Number(selectedFrontendLanguage), frontendLanguages);
+        const selectedFrontendLibraryName = getLabel(Number(selectedFrontendLibrary), frontendLibraries);
 
         if (uploadedFile) {
             const reader = new FileReader();
             reader.onload = async (event) => {
                 uploadedFileContent = event.target.result as string;
-
                 const requestData: CodeGenerationRequest = {
-                    prompt_text: promptText,
-                    uploaded_file_content: uploadedFileContent,
-                    programming_language_id: Number(selectedProgrammingLanguage),
-                    framework_id: Number(selectedFramework),
-                    database_type_id: Number(selectedDatabaseType),
-                    frontend_language_id: Number(selectedFrontendLanguage),
-                    frontend_library_id: Number(selectedFrontendLibrary),
+                  prompt_text: promptText,
+                  uploaded_file_content: uploadedFileContent,
+                  programming_language_id: languageName,
+                  framework_id: selectedFrameworkName,
+                  database_type_id: selectedDatabaseTypeName,
+                  frontend_language_id: selectedFrontendLanguageName,
+                  frontend_library_id: selectedFrontendLibraryName,
                 };
-
+        
                 const data = await post<{ generated_code: string }>('/api/gemini/generate-code', requestData);
-                setGeneratedCode(data.generated_code);
+                // setGeneratedCode(data.generated_code);
+                navigate('/resultCode', { state: { generatedCode: data.generated_code } });
             };
             reader.readAsText(uploadedFile);
         } else {
-            const requestData: CodeGenerationRequest = {
-                prompt_text: promptText,
-                uploaded_file_content: uploadedFileContent,
-                programming_language_id: Number(selectedProgrammingLanguage),
-                framework_id: Number(selectedFramework),
-                database_type_id: Number(selectedDatabaseType),
-                frontend_language_id: Number(selectedFrontendLanguage),
-                frontend_library_id: Number(selectedFrontendLibrary),
-            };
 
-            const data = await post<{ generated_code: string }>('/api/gemini/generate-code', requestData);
-            setGeneratedCode(data.generated_code);
+          const requestData: CodeGenerationRequest = {
+            prompt_text: promptText,
+            programming_language_id: languageName,
+            framework_id: selectedFrameworkName,
+            database_type_id: selectedDatabaseTypeName,
+            frontend_language_id: selectedFrontendLanguageName,
+            frontend_library_id: selectedFrontendLibraryName,
+          };
+          const data = await post<{ generated_code: string }>('/api/gemini/generate-code', requestData);
+          // setGeneratedCode(data.generated_code);
+          navigate('/resultCode', { state: { generatedCode: data.generated_code } });
         }
     } catch (e: Error) {
         setError("システムエラー発生しました。");
@@ -332,17 +342,6 @@ const CodeGenerator: React.FC = () => {
               コード生成
             </Button>
           </Box>
-          {loading && <CircularProgress />}
-          {generatedCode && (
-            <Box mt={3}>
-              <Typography variant="h6">生成したコード</Typography>
-              <TextareaAutosize
-                style={{ width: '100%', minHeight: 200, padding: 8 }}
-                value={generatedCode}
-                readOnly
-              />
-            </Box>
-          )}
         </Paper>
       </Grid>
     </Grid>

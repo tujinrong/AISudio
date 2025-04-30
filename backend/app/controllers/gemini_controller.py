@@ -50,16 +50,16 @@ async def generate_code(request: CodeGenerationRequest, db: Session = Depends(ge
         )
 
         prompt = f"""
-        根据以下需求和文件内容，生成 {request.programming_language_id} {request.framework_id} 代码，数据库类型为 {request.database_type_id}，
-        前端使用 {request.frontend_language_id} {request.frontend_library_id}。
-
         需求:
         {request.prompt_text}
+
+        以下是一个功能规格说明，请根据内容，生成 {request.programming_language_id} {request.framework_id} 的后端代码，数据库类型为 {request.database_type_id}，
+        生成 {request.frontend_language_id} {request.frontend_library_id} 的前端代码，并为每段代码添加说明，格式为 markdown：
 
         文件内容:
         {request.uploaded_file_content}
         """
-
+        print(prompt)
         response = model.generate_content(prompt)
         return {"generated_code": response.text}
     except Exception as e:
