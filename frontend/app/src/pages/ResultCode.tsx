@@ -4,7 +4,8 @@ import { useLocation } from 'react-router-dom';
 import { Box, Button, Typography, CircularProgress } from "@mui/material";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { materialLight } from "react-syntax-highlighter/dist/esm/styles/prism";
-
+import { post } from '../utils/http';
+import LoadingScreen from '../components/LoadingScreen'
 type Chunk = { type: 'text' | 'code', content: string, language?: string };
 
 const parseMarkdownChunks = (md: string): Chunk[] => {
@@ -28,33 +29,55 @@ const parseMarkdownChunks = (md: string): Chunk[] => {
 
 const ResultCode = () => {
   const location = useLocation();
-  const generatedCode = location.state?.generatedCode || '';
+  const requestData = location.state?.requestData || '';
   const [chunks, setChunks] = useState<Chunk[]>([]);
   const [loading, setLoading] = useState(true);
-
   useEffect(() => {
-    if (generatedCode) {
-      const result = parseMarkdownChunks(generatedCode);
-      setChunks(result);
+    const fetchGeneratedCode = async () => {
+      try {
+        const res = await post<{ generated_code: string }>(
+          '/api/gemini/generate-code',
+          requestData
+        );
+        const result = parseMarkdownChunks(res.generated_code);
+        setChunks(result);
+      } catch (e) {
+        setChunks([{ type: 'text', content: 'エラーが発生しました。' }]);
+      } finally {
+        setLoading(false);
+      }
+    };
+  
+    if (requestData) {
+      setLoading(true);
+      setChunks([])
+      fetchGeneratedCode();
     }
-    setLoading(false);
-  }, [generatedCode]);
+  }, [requestData]);
+  
+  // useEffect(() => {
+  //   if (generatedCode) {
+  //     const result = parseMarkdownChunks(generatedCode);
+  //     setChunks(result);
+  //   }
+  //   setLoading(false);
+  // }, [generatedCode]);
 
   return (
     <MainLayout>
-      <Box p={4}>
-        {loading && <CircularProgress sx={{ mt: 2 }} />}
-        <Box mt={4} display="flex" flexDirection="column" gap={3}>
+      <Box p={1}>
+        {loading && <LoadingScreen />}
+        <Box mt={1} display="flex" flexDirection="column" gap={3}>
           {chunks.map((chunk, i) =>
             chunk.type === 'text' ? (
               <Typography key={i} variant="body1">{chunk.content}</Typography>
             ) : (
-              <Box key={i} position="relative" bgcolor="#f5f5f5" borderRadius={2} p={2}>
+              <Box key={i} position="relative" bgcolor="#f5f5f5" borderRadius={2} p={4}>
                 <Button
                   variant="outlined"
                   size="small"
                   onClick={() => navigator.clipboard.writeText(chunk.content)}
-                  sx={{ position: "absolute", top: 8, right: 8 }}
+                  sx={{ position: "absolute", top: 2, right: 2 }}
                 >
                   Copy
                 </Button>

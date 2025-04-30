@@ -1,5 +1,5 @@
 // src/components/CodeGenerator.tsx
-import { get, post } from '../utils/http';
+import { get } from '../utils/http';
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -15,7 +15,6 @@ import {
   Alert,
   SelectChangeEvent,
 } from '@mui/material';
-import CircularProgress from '@mui/material/CircularProgress';
 import { useLabelLookup } from '../utils/Utils';
 
 
@@ -62,7 +61,6 @@ interface CodeGenerationRequest {
 }
 
 const CodeGenerator: React.FC = () => {
-  const [loading, setLoading] = useState<boolean>(false);
   const [promptText, setPromptText] = useState<string>('');
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [programmingLanguages, setProgrammingLanguages] = useState<ProgrammingLanguage[]>([]);
@@ -155,7 +153,6 @@ const CodeGenerator: React.FC = () => {
 
   const handleSubmit = async () => {
     setError('');
-    setLoading(true);
     try {
         let uploadedFileContent: string | null = null;
         const languageName = getLabel(Number(selectedProgrammingLanguage), programmingLanguages);
@@ -178,9 +175,9 @@ const CodeGenerator: React.FC = () => {
                   frontend_library_id: selectedFrontendLibraryName,
                 };
         
-                const data = await post<{ generated_code: string }>('/api/gemini/generate-code', requestData);
+                // const data = await post<{ generated_code: string }>('/api/gemini/generate-code', requestData);
                 // setGeneratedCode(data.generated_code);
-                navigate('/resultCode', { state: { generatedCode: data.generated_code } });
+                navigate('/resultCode', { state: { requestData: requestData } });
             };
             reader.readAsText(uploadedFile);
         } else {
@@ -193,14 +190,13 @@ const CodeGenerator: React.FC = () => {
             frontend_language_id: selectedFrontendLanguageName,
             frontend_library_id: selectedFrontendLibraryName,
           };
-          const data = await post<{ generated_code: string }>('/api/gemini/generate-code', requestData);
+          // const data = await post<{ generated_code: string }>('/api/gemini/generate-code', requestData);
           // setGeneratedCode(data.generated_code);
-          navigate('/resultCode', { state: { generatedCode: data.generated_code } });
+          // navigate('/resultCode', { state: { generatedCode: data.generated_code, loading: loading } });
+          navigate('/resultCode', { state: { requestData: requestData } });
         }
     } catch (e: Error) {
-        setError("システムエラー発生しました。");
-      } finally {
-        setLoading(false);
+      setError("システムエラー発生しました。");
     }
   };
 
